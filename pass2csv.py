@@ -4,7 +4,12 @@ import argparse
 import collections
 import csv
 import gnupg
+import logging
 import os
+
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def parse_args():
@@ -25,12 +30,14 @@ def parse_args():
 
 
 def get_file_list(pass_path):
+    logger.info('Searching for .gpg files in %s', pass_path)
     filelist = []
 
     for root, dirs, files in os.walk(pass_path):
         filelist += [os.path.join(root.replace(pass_path, '')[1:], f)
                      for f in files if f.endswith('.gpg')]
 
+    logger.info('Found %d matching files', len(filelist))
     return filelist
 
 
@@ -46,6 +53,8 @@ def extract_title(name):
 
 
 def convert_file(gpg, pass_path, name, keywords):
+    logger.debug('Converting %s...', name)
+
     with open(os.path.join(pass_path, name), 'rb') as f:
         decrypted = str(gpg.decrypt_file(f))
 
@@ -74,12 +83,18 @@ def convert_file(gpg, pass_path, name, keywords):
 
 
 def setup_gpg(path):
+    logger.debug('Setting up GPG in keyring %s', path)
+
     gpg = gnupg.GPG(gnupghome=path)
     return gpg
 
 
 def write_csv(path, keywords, data):
+    logger.info('Writing data to %s...', path)
+
     header = ['folder', 'title'] + keywords + ['password', 'comments']
+    logging.debug('Header column is %s', header)
+
     with open(path, 'w+') as f:
         writer = csv.writer(f)
         writer.writerow(header)
@@ -91,14 +106,18 @@ def write_csv(path, keywords, data):
 
 def main():
     args = parse_args()
+    logger.debug('Arguments: %s', args)
+
     password_store = os.path.expanduser(args.password_store)
     gpg = setup_gpg(os.path.expanduser(args.gpg_keyring))
     targets = get_file_list(password_store)
 
+    logger.info('Converting files...')
     converted_data = []
     for target in targets:
         converted_data.append(convert_file(gpg, password_store,
                                            target, args.keywords))
+    logger.info('Conversion finished')
 
     write_csv(os.path.expanduser(args.output), args.keywords, converted_data)
 
