@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import collections
 import csv
 import gnupg
 import logging
