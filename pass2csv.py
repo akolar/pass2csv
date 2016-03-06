@@ -86,6 +86,8 @@ def setup_gpg(path):
     logger.debug('Setting up GPG in keyring %s', path)
 
     gpg = gnupg.GPG(gnupghome=path)
+    if len(gpg.list_keys()) == 0:
+        raise ValueError('Provided GPG keyring does not include any keys')
     return gpg
 
 
